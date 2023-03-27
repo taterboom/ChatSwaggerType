@@ -36,3 +36,20 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+
+Here's the Swift struct definition for the JSON schema at path `["paths"]["/admin/abtests/{abtestID}/user_test_plan/task_status"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]`:
+
+```swift
+struct UserTestPlanTaskStatus: Codable {
+   let status: UserTestPlanTaskStatusCode
+   let msg: String?
+}
+enum UserTestPlanTaskStatusCode: Int, Codable {
+   case accepted = 1
+   case inProgress = 2
+   case completed = 3
+   case failed = 4
+}
+```
+
+Note that the `status` property is defined as an `enum` of type `UserTestPlanTaskStatusCode`, which represents the numeric values as an enumeration of cases.
