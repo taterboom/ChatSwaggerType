@@ -10,6 +10,19 @@ type QueryConfig = {
   onFinish: (reason: string) => void
 }
 
+export function generateMessages(query: Pick<QueryConfig, "schema" | "language" | "path">) {
+  return [
+    {
+      role: "user",
+      content: `This is a swagger schema json. ${query.schema}`,
+    },
+    {
+      role: "user",
+      content: `generate ${query.language} definition at path "${query.path}" in the swagger schema json, note that some \`number\` types are \`enum\`. The result should be placed in a code block in markdown format. Do not generate definition at other paths.`,
+    },
+  ]
+}
+
 export async function generate(query: QueryConfig, apiKey: string) {
   const body: Record<string, any> = {
     model: "gpt-3.5-turbo",
@@ -19,16 +32,7 @@ export async function generate(query: QueryConfig, apiKey: string) {
     // frequency_penalty: 1,
     // presence_penalty: 1,
     stream: true,
-    messages: [
-      {
-        role: "user",
-        content: `This is a swagger schema json. ${query.schema}`,
-      },
-      {
-        role: "user",
-        content: `generate ${query.language} definition at path "${query.path}", note that some \`number\` types are \`enum\`.`,
-      },
-    ],
+    messages: generateMessages(query),
   }
 
   const headers: Record<string, string> = {
