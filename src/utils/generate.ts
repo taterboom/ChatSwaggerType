@@ -1,24 +1,53 @@
+import { get } from "lodash"
 import { fetchSSE } from "./fetchSSE"
+
+export function generateSchema(
+  json: Record<string, any>,
+  paths: string | string[]
+): Record<string, any> {
+  const schema: Record<string, any> = Array.isArray(paths)
+    ? paths.reduce((acc, cur) => acc[cur], json)
+    : get(json, paths)
+  console.log(json, paths, schema)
+  return Object.fromEntries(
+    Object.entries(schema)
+      .map(([key, value]) => {
+        if (key === "$ref") {
+          const refPaths = (value as string).split("/").slice(1)
+          return Object.entries(generateSchema(json, refPaths))
+        }
+        return [[key, value]]
+      })
+      .flat()
+  )
+}
 
 type QueryConfig = {
   language: string
   schema: string
-  path: string
   signal?: AbortSignal
   onMessage: (data: { content: string; role: string }) => void
   onError: (error: string) => void
   onFinish: (reason: string) => void
 }
 
-export function generateMessages(query: Pick<QueryConfig, "schema" | "language" | "path">) {
+export function generateMessages(query: Pick<QueryConfig, "schema" | "language">) {
   return [
+    // {
+    //   role: "user",
+    //   content: `This is a swagger schema json. ${query.schema}`,
+    // },
+    // {
+    //   role: "user",
+    //   content: `Generate ${query.language} definition at path \`${query.path}\` in the swagger schema json, note that some \`number\` types are \`enum\`. The result should be placed in a code block in markdown format. Do not generate definition at other paths.`,
+    // },
     {
-      role: "user",
-      content: `This is a swagger schema json. ${query.schema}`,
+      role: "system",
+      content: `I want you to act as a code type definition generator. I will give you a swagger schema json, you should give me the definition in ${query.language}, you should add comment from the \`description\` filed if exists, note that some of the "number" types are actually "enum" types. I want you to only reply with the definition inside one unique code block, and nothing else. do not write explanations.`,
     },
     {
       role: "user",
-      content: `generate ${query.language} definition at path "${query.path}" in the swagger schema json, note that some \`number\` types are \`enum\`. The result should be placed in a code block in markdown format. Do not generate definition at other paths.`,
+      content: `The swagger schema json is \`${query.schema}\``,
     },
   ]
 }
@@ -42,16 +71,13 @@ export async function generate(query: QueryConfig, apiKey: string) {
 
   let isFirst = true
 
-  // console.log(body)
-  // return
-
   await fetchSSE(`https://api.openai.com/v1/chat/completions`, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
     signal: query.signal,
     onMessage: (msg) => {
-      console.log(msg)
+      // console.log(msg)
       let resp
       try {
         resp = JSON.parse(msg)

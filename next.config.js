@@ -1,8 +1,16 @@
 /** @type {import('next').NextConfig} */
+
+const isExtension = process.env.NEXT_PUBLIC_IS_EXTENSION === "true"
+
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
+  // experimental: {
+  //   appDir: true,
+  // },
+  assetPrefix: "./",
+  distDir: "dist/out",
+  ...(isExtension ? { output: "export" } : undefined),
 }
+
+console.log("nextConfig.output", nextConfig.output)
 
 module.exports = nextConfig

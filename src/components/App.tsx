@@ -1,8 +1,8 @@
 "use client"
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import TreeView, { INode, flattenTree } from "react-accessible-treeview"
 import cx from "classnames"
-import { generate, generateMessages } from "@/utils/generate"
+import { generate, generateMessages, generateSchema } from "@/utils/generate"
 import ReactMarkdown from "react-markdown"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vs } from "react-syntax-highlighter/dist/esm/styles/prism"
@@ -12,14 +12,11 @@ import { CarbonCaretRight } from "@/components/icons"
 import TextareaAutosize from "react-textarea-autosize"
 
 let copiedTimeout: any
-
 const LANGUAGES = ["typescript", "swift", "java", "kotlin", "python", "go"]
-
 type TreeNode = {
   name: string
   children?: TreeNode[]
 }
-
 function json2Tree(json?: Record<string, any>): TreeNode[] {
   if (typeof json !== "object") return []
   return Object.keys(json).map((key) => ({
@@ -27,7 +24,6 @@ function json2Tree(json?: Record<string, any>): TreeNode[] {
     children: json2Tree(json[key]),
   }))
 }
-
 function getPath(node: INode, tree: Array<INode>): Array<any> {
   const path = []
   let currentNode: INode | undefined = node
@@ -42,15 +38,13 @@ function getPath(node: INode, tree: Array<INode>): Array<any> {
   }
   return path
 }
-
 const GET200PATH_VARIENT_0 = ["get", "responses", "200", "content", "application/json", "schema"]
 const GET200PATH_VARIENT_1 = ["get", "responses", "200", "schema"]
 const GET200PATH_PREFIX = ["paths"]
-
 const PATH_SPLITTER = "~~~"
-
-function filterJsonOnlyGET200(json: Record<string, any>) {
-  const paths = json["paths"]
+function filterJsonOnlyGET200(json?: Record<string, any>) {
+  const paths = json?.["paths"]
+  if (!paths) return
   return Object.fromEntries(
     Object.keys(paths)
       .map((key) => {
@@ -80,6 +74,8 @@ const useLocalstorageState = (key: string, defaultValue?: any) => {
     if (typeof window !== "undefined") {
       const valueInLocalStorage = localStorage.getItem(key)
       if (valueInLocalStorage) {
+        if (valueInLocalStorage === "true") return true
+        if (valueInLocalStorage === "false") return false
         return valueInLocalStorage
       }
     }
@@ -93,28 +89,67 @@ const useLocalstorageState = (key: string, defaultValue?: any) => {
   return [state, setState]
 }
 
-function ControlledExpandedNode() {
-  const [schema, setSchema] = useState<string>("")
+function useFirstMountState(): boolean {
+  const isFirst = useRef(true)
+
+  if (isFirst.current) {
+    isFirst.current = false
+
+    return true
+  }
+
+  return isFirst.current
+}
+
+function CopyPrompt(props: { copy: () => boolean }) {
+  const [copied, setCopied] = useState(false)
+  const copiedTimeoutRef = useRef<any>()
+  const onCopy = () => {
+    if (props.copy()) {
+      setCopied(true)
+      clearTimeout(copiedTimeoutRef.current)
+      copiedTimeoutRef.current = setTimeout(() => {
+        setCopied(false)
+      }, 1500)
+    }
+  }
+  return (
+    <span
+      className="cursor-pointer opacity-50 transition-opacity hover:opacity-100"
+      onClick={onCopy}
+    >
+      copy the prompt {copied ? "✅" : ""}
+    </span>
+  )
+}
+
+function App(props: { initialSwaggerJson?: string; initialPathStr?: string }) {
+  const [schema, setSchema] = useState<string>(props.initialSwaggerJson || "")
   const [path, setPath] = useState<Array<INode>>([])
   const [typeStr, setTypeStr] = useState("")
   const [copied, setCopied] = useState(false)
-  const [onlyGet200, setOnlyGet200] = useState(false)
+  const [onlyGet200, setOnlyGet200] = useLocalstorageState("chat-swagger-type-only-get-200", false)
   const [language, setLanguage] = useLocalstorageState("chat-swagger-type-language", LANGUAGES[0])
   const [loading, setLoading] = useState(false)
   const [apikey, setApikey] = useLocalstorageState("chat-swagger-type-api-key", "")
-  const [pathStr, setPathStr] = useState("")
+  const [pathStr, setPathStr] = useState(props.initialPathStr || "")
 
-  const schemaJson = useMemo(() => {
+  const firstMounted = useFirstMountState()
+
+  const originSchemaJson = useMemo(() => {
     try {
-      let json = JSON.parse(schema)
-      if (onlyGet200) {
-        json = filterJsonOnlyGET200(json)
-      }
-      return json
+      return JSON.parse(schema)
     } catch {
       return null
     }
-  }, [onlyGet200, schema])
+  }, [schema])
+
+  const schemaJson = useMemo(() => {
+    if (onlyGet200) {
+      return filterJsonOnlyGET200(originSchemaJson)
+    }
+    return originSchemaJson
+  }, [onlyGet200, originSchemaJson])
 
   const data = useMemo(() => {
     try {
@@ -123,8 +158,6 @@ function ControlledExpandedNode() {
       return null
     }
   }, [schemaJson])
-
-  console.log(path, schemaJson)
 
   const getPathStr = useCallback(() => {
     if (path.length === 0) return ""
@@ -136,7 +169,10 @@ function ControlledExpandedNode() {
   }, [onlyGet200, path, schemaJson])
 
   useEffect(() => {
-    setPathStr(getPathStr())
+    if (!firstMounted) {
+      setPathStr(getPathStr())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getPathStr])
 
   const checkValid = (forceApiKey = false) => {
@@ -166,8 +202,7 @@ function ControlledExpandedNode() {
       await generate(
         {
           language: language,
-          schema: schema,
-          path: pathStr,
+          schema: JSON.stringify(generateSchema(originSchemaJson, pathStr)),
           onMessage: (message) => {
             if (message.role) {
               return
@@ -195,34 +230,39 @@ function ControlledExpandedNode() {
 
   const copyPrompt = () => {
     if (!checkValid()) {
-      return
+      return false
     }
     copy(
-      generateMessages({ language, schema, path: pathStr })
+      generateMessages({
+        language,
+        schema: JSON.stringify(generateSchema(originSchemaJson, pathStr)),
+      })
         .map((item) => item.content)
         .join("\n")
     )
+    return true
   }
 
   return (
     <div className="container mx-auto pb-8 py-4 px-4 space-y-4">
-      <div className="logo">
+      <div className="logo md:block">
         <h1 className="title">ChatSwaggerType</h1>
         <h2 className="tips">
           Input the swagger json, select the schema path, then generate the type.
         </h2>
       </div>
-      <div className="flex gap-4 min-h-[300px]">
+      <div className="flex gap-4 min-h-[300px] md:block md:space-y-2">
         <div className="flex-1">
           <textarea
-            className="textarea textarea-bordered w-full h-full"
+            className="textarea textarea-bordered w-full h-full min-h-[100px] md:text-xs py-1 px-2"
             placeholder="type swagger json here"
+            value={schema}
             onChange={(e) => {
               setSchema(e.target.value)
             }}
           ></textarea>
         </div>
-        <div className="flex-1 border border-black/20">
+        <div className="flex-1 border border-black/20 min-h-[180px]">
           <div className="flex justify-between items-center border-b border-black/20 px-2">
             <div className="text-sm font-semibold">
               Select the path (end with the `schema` filed)
@@ -246,8 +286,8 @@ function ControlledExpandedNode() {
               data={data}
               aria-label="Controlled expanded node tree"
               // defaultExpandedIds={[1]}
-              onExpand={console.log}
-              onSelect={(...args) => console.log(args)}
+              // onExpand={console.log}
+              // onSelect={(...args) => console.log(args)}
               nodeRenderer={({
                 element,
                 isBranch,
@@ -283,7 +323,7 @@ function ControlledExpandedNode() {
       <div className="flex space-x-2">
         <strong>Path: </strong>{" "}
         <TextareaAutosize
-          className="flex-1 textarea textarea-ghost py-0 px-1 align-top min-h-6 resize-none -mt-0.5"
+          className="flex-1 textarea textarea-ghost py-0 px-1 align-top min-h-6 resize-none -mt-0.5 md:-mt-1"
           placeholder="Select the path or type here"
           value={pathStr}
           onChange={(e) => {
@@ -318,12 +358,7 @@ function ControlledExpandedNode() {
       </button>
       <span className="text-xs ml-2">
         <span className="opacity-50">or </span>
-        <span
-          className="cursor-pointer opacity-50 transition-opacity hover:opacity-100"
-          onClick={copyPrompt}
-        >
-          copy the prompt
-        </span>
+        <CopyPrompt copy={copyPrompt} />
       </span>
       {typeStr ? (
         <section className="response">
@@ -377,7 +412,6 @@ function ControlledExpandedNode() {
     </div>
   )
 }
-
 const ArrowIcon = (props: { isOpen: boolean; className?: string }) => {
   return (
     <CarbonCaretRight
@@ -385,5 +419,4 @@ const ArrowIcon = (props: { isOpen: boolean; className?: string }) => {
     />
   )
 }
-
-export default ControlledExpandedNode
+export default App
