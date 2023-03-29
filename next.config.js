@@ -6,9 +6,7 @@ const nextConfig = {
   // experimental: {
   //   appDir: true,
   // },
-  assetPrefix: "./",
-  distDir: "dist/out",
-  ...(isExtension ? { output: "export" } : undefined),
+  ...(isExtension ? { output: "export", distDir: "dist/out", assetPrefix: "./" } : undefined),
 }
 
 console.log("nextConfig.output", nextConfig.output)
