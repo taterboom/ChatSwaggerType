@@ -175,6 +175,13 @@ function App(props: { initialSwaggerJson?: string; initialPathStr?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getPathStr])
 
+  useEffect(() => {
+    const responseEl = document.querySelector("#response-block")
+    if (!responseEl) return
+    if (!typeStr) return
+    responseEl.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
+  }, [typeStr])
+
   const checkValid = (forceApiKey = false) => {
     if (!schema) {
       alert("Please type the swagger json")
@@ -361,7 +368,7 @@ function App(props: { initialSwaggerJson?: string; initialPathStr?: string }) {
         <CopyPrompt copy={copyPrompt} />
       </span>
       {typeStr ? (
-        <section className="response">
+        <section className="response" id="response-block">
           <ReactMarkdown
             components={{
               code({ node, inline, className, children, ...props }) {
