@@ -9,17 +9,20 @@ export function generateSchema(
     ? paths.reduce((acc, cur) => acc[cur], json)
     : get(json, paths)
   console.log(json, paths, schema)
-  return Object.fromEntries(
-    Object.entries(schema)
-      .map(([key, value]) => {
-        if (key === "$ref") {
-          const refPaths = (value as string).split("/").slice(1)
-          return Object.entries(generateSchema(json, refPaths))
-        }
-        return [[key, value]]
-      })
-      .flat()
-  )
+  const _generate = (_schema: Record<string, any>): Record<string, any> => {
+    return Object.fromEntries(
+      Object.entries(_schema)
+        .map(([key, value]) => {
+          if (key === "$ref") {
+            const refPaths = (value as string).split("/").slice(1)
+            return Object.entries(generateSchema(json, refPaths))
+          }
+          return [[key, typeof value === "object" ? _generate(value) : value]]
+        })
+        .flat()
+    )
+  }
+  return _generate(schema)
 }
 
 type QueryConfig = {

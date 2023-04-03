@@ -11,5 +11,5 @@
   "action": {
     "default_popup": "out/index.html"
   },
-  "permissions": ["tabs", "scripting", "activeTab"]
+  "permissions": ["scripting", "activeTab"]
 }
