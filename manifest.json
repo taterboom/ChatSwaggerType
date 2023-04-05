@@ -1,7 +1,7 @@
 {
   "name": "ChatSwaggerType",
   "description": "Input the swagger json, select the schema path, then generate the type.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "manifest_version": 3,
   "icons": {
     "128": "out/logo-128.png",

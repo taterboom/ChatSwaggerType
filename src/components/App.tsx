@@ -8,8 +8,9 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vs } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { CopyToClipboard } from "react-copy-to-clipboard"
 import copy from "copy-to-clipboard"
-import { CarbonCaretRight } from "@/components/icons"
+import { AntDesignChromeFilled, AntDesignGithubFilled, CarbonCaretRight } from "@/components/icons"
 import TextareaAutosize from "react-textarea-autosize"
+import { isExtension } from "@/utils/env"
 
 let copiedTimeout: any
 const LANGUAGES = ["typescript", "swift", "java", "kotlin", "python", "go"]
@@ -257,6 +258,20 @@ function App(props: { initialSwaggerJson?: string; initialPathStr?: string }) {
         <h2 className="tips">
           Input the swagger json, select the schema path, then generate the type.
         </h2>
+        {!isExtension() && (
+          <div className="md:hidden ml-auto space-x-2">
+            <a href="https://github.com/taterboom/ChatSwaggerType">
+              <button className="btn btn-sm btn-circle btn-ghost text-xl">
+                <AntDesignGithubFilled />
+              </button>
+            </a>
+            <a href="https://chrome.google.com/webstore/detail/chatswaggertype/lkminimpgnlpggmkanlhiahjafjnllfk">
+              <button className="btn btn-sm btn-circle btn-ghost text-xl">
+                <AntDesignChromeFilled />
+              </button>
+            </a>
+          </div>
+        )}
       </div>
       <div className="flex gap-4 min-h-[300px] md:block md:space-y-2">
         <div className="flex-1">
