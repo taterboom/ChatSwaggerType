@@ -71,6 +71,7 @@ function filterJsonOnlyGET200(json?: Record<string, any>) {
 }
 
 const useLocalstorageState = (key: string, defaultValue?: any) => {
+  const firstMounted = useFirstMountState()
   const [state, setState] = useState(() => {
     if (typeof window !== "undefined") {
       const valueInLocalStorage = localStorage.getItem(key)
@@ -84,7 +85,9 @@ const useLocalstorageState = (key: string, defaultValue?: any) => {
   })
 
   useEffect(() => {
+    if (firstMounted) return
     localStorage.setItem(key, state)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, state])
 
   return [state, setState]
@@ -129,7 +132,7 @@ function App(props: { initialSwaggerJson?: string; initialPathStr?: string }) {
   const [path, setPath] = useState<Array<INode>>([])
   const [typeStr, setTypeStr] = useState("")
   const [copied, setCopied] = useState(false)
-  const [onlyGet200, setOnlyGet200] = useLocalstorageState("chat-swagger-type-only-get-200", false)
+  const [onlyGet200, setOnlyGet200] = useLocalstorageState("chat-swagger-type-only-get-200", true)
   const [language, setLanguage] = useLocalstorageState("chat-swagger-type-language", LANGUAGES[0])
   const [loading, setLoading] = useState(false)
   const [apikey, setApikey] = useLocalstorageState("chat-swagger-type-api-key", "")
