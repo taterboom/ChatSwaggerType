@@ -79,6 +79,13 @@ export function generateMessages(query: Pick<QueryConfig, "schema" | "language">
   ]
 }
 
+export function generateSinglePrompt(...args: Parameters<typeof generateMessages>) {
+  return `
+  Here are chats. The middle part about user and assistant content is an example, please generate next assistant content.
+  ${JSON.stringify(generateMessages(...args))}
+  `
+}
+
 export async function generate(query: QueryConfig, apiKey: string) {
   const body: Record<string, any> = {
     model: "gpt-3.5-turbo",

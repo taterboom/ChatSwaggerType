@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import TreeView, { INode, flattenTree } from "react-accessible-treeview"
 import cx from "classnames"
-import { generate, generateMessages, generateSchema } from "@/utils/generate"
+import { generate, generateMessages, generateSchema, generateSinglePrompt } from "@/utils/generate"
 import ReactMarkdown from "react-markdown"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { vs } from "react-syntax-highlighter/dist/esm/styles/prism"
@@ -244,12 +244,10 @@ function App(props: { initialSwaggerJson?: string; initialPathStr?: string }) {
       return false
     }
     copy(
-      generateMessages({
+      generateSinglePrompt({
         language,
         schema: JSON.stringify(generateSchema(originSchemaJson, pathStr)),
       })
-        .map((item) => item.content)
-        .join("\n")
     )
     return true
   }
