@@ -36,21 +36,45 @@ type QueryConfig = {
 
 export function generateMessages(query: Pick<QueryConfig, "schema" | "language">) {
   return [
-    // {
-    //   role: "user",
-    //   content: `This is a swagger schema json. ${query.schema}`,
-    // },
-    // {
-    //   role: "user",
-    //   content: `Generate ${query.language} definition at path \`${query.path}\` in the swagger schema json, note that some \`number\` types are \`enum\`. The result should be placed in a code block in markdown format. Do not generate definition at other paths.`,
-    // },
     {
       role: "system",
-      content: `I want you to act as a code type definition generator. I will give you a swagger schema json, you should give me the definition in ${query.language}, you should add comment from the \`description\` filed if exists, note that some of the "number" types are actually "enum" types. I want you to only reply with the definition inside one unique code block, and nothing else. do not write explanations.`,
+      content: `You will act as a type definition code generator. I will provide you with a swagger schema JSON delimited by triple backticks and the target language delimited by triple quotes, you should generate the type definition code based on the schema in the language.
+      Here are some points to note:
+      - swagger schema keywords like 'allOf' etc. should not be considered as a type
+      - if a field has a description, append the description as a comment after the filed, otherwise do not wirte any comments
+      - some of the "number" types are actually "enum" types.
+      Provide output inside one unique code block, and nothing else. Do not write explanations.`,
     },
     {
       role: "user",
-      content: `The swagger schema json is \`${query.schema}\``,
+      content: `The language is """typescript"""
+      The swagger schema JSON is \`\`\`{"allOf":{"0":{"properties":{"ipp":{"example":10,"format":"int64","minimum":0,"type":"integer","x-omitempty":false},"page":{"example":1,"format":"int64","minimum":1,"type":"integer","x-omitempty":false},"total":{"example":100,"format":"int64","type":"integer","x-omitempty":false}},"type":"object"},"1":{"properties":{"objects":{"items":{"properties":{"id":{"example":"qwert","type":"string","x-omitempty":false},"status":{"description":"\`\`\`\n  状态\n  0. 未上线\n  1. 已上线\n  2. 已下线\n\`\`\`\n","enum":{"0":0,"1":1,"2":2},"type":"integer","x-go-type":"uint8"},"vocab":{"description":"单词","type":"string"}},"required":{"0":"id","1":"vocab","3":"status"},"type":"object"},"type":"array"}},"required":{"0":"objects"},"type":"object"}}}\`\`\``,
+    },
+    {
+      role: "assistant",
+      content: `\`\`\`
+      type Response = {
+        ipp: number,
+        page: number,
+        total: number,
+        objects: {
+          id: string,
+          /**
+           * 状态
+           * 0. 未上线
+           * 1. 已上线
+           * 2. 已下线
+           */
+          status: 0 | 1 | 2,
+          vocab: string, // 单词
+        }[]
+      }
+      \`\`\``,
+    },
+    {
+      role: "user",
+      content: `The language is """${query.language}"""
+      The swagger schema JSON is \`\`\`${query.schema}\`\`\``,
     },
   ]
 }
